@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: jafra-agent
+  namespace: jafra-system
+  labels:
+    app.kubernetes.io/name: jafra-agent
+    app.kubernetes.io/version: "0.1.0"
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: jafra-agent
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: jafra-agent
+        app.kubernetes.io/version: "0.1.0"
+    spec:
+      serviceAccountName: jafra-agent
+      hostNetwork: false
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: agent
+          image: quay.io/bharathappali/jafra-agent:0.1.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: JAFRA_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: JAFRA_RECORDING_ROOT
+              value: /jfr-data
+            - name: JAFRA_MODE
+              # log-only first. Switch to grpc after jafra-analyzer is Ready:
+              # kubectl set env daemonset/jafra-agent -n jafra-system JAFRA_MODE=grpc
+              value: log-only
+            - name: JAFRA_RESCAN_INTERVAL
+              value: 10s
+            - name: JAFRA_MAX_ACTIVE_READERS
+              value: "8"
+            - name: JAFRA_MAX_IN_FLIGHT_CHUNKS
+              value: "8"
+            - name: JAFRA_FRAME_SIZE
+              value: "131072"
+            - name: JAFRA_CLUSTER_ID
+              value: local-demo
+            - name: JAFRA_ANALYZER_ENDPOINT
+              value: http://jafra-analyzer.jafra-system.svc.cluster.local:9090
+            - name: JAFRA_RETRY_INITIAL_DELAY
+              value: 1s
+            - name: JAFRA_RETRY_MAX_DELAY
+              value: 30s
+            - name: JAFRA_DELETE_CLOSED_FILES
+              value: "true"
+            - name: RUST_LOG
+              value: info
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          volumeMounts:
+            - name: recordings
+              mountPath: /jfr-data
+              readOnly: false
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+      volumes:
+        - name: recordings
+          hostPath:
+            path: /var/lib/jafra/recordings
+            type: DirectoryOrCreate

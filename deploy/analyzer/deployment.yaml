@@ -1,0 +1,93 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jafra-analyzer-storage
+  namespace: jafra-system
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jafra-analyzer
+  namespace: jafra-system
+  labels:
+    app.kubernetes.io/name: jafra-analyzer
+    app.kubernetes.io/version: "0.1.0"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: jafra-analyzer
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: jafra-analyzer
+        app.kubernetes.io/version: "0.1.0"
+    spec:
+      securityContext:
+        fsGroup: 65532
+      containers:
+        - name: analyzer
+          image: quay.io/bharathappali/jafra-analyzer:0.1.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: "-XX:+UseContainerSupport -Xms256m -Xmx1024m"
+          ports:
+            - name: grpc
+              containerPort: 9090
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /q/health/ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /q/health/live
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 2Gi
+          volumeMounts:
+            - name: analyzer-storage
+              mountPath: /var/lib/jafra/analyzer
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+      volumes:
+        - name: analyzer-storage
+          persistentVolumeClaim:
+            claimName: jafra-analyzer-storage
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jafra-analyzer
+  namespace: jafra-system
+spec:
+  selector:
+    app.kubernetes.io/name: jafra-analyzer
+  ports:
+    - name: grpc
+      port: 9090
+      targetPort: grpc
+    - name: http
+      port: 8080
+      targetPort: http

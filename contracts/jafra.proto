@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package jafra.ingest.v1;
+
+option java_multiple_files = true;
+option java_package = "io.jafra.ingest.v1";
+
+service JafraIngestService {
+  rpc Upload(stream UploadRequest) returns (stream UploadAck);
+}
+
+message UploadRequest {
+  oneof payload {
+    OpenChunk open = 1;
+    ChunkFrame frame = 2;
+    CommitChunk commit = 3;
+  }
+}
+
+message OpenChunk {
+  uint32 protocol_version = 1;
+  string cluster_id = 2;
+  string node_name = 3;
+  string namespace = 4;
+  string pod_name = 5;
+  string pod_uid = 6;
+  string container_name = 7;
+  string recording_id = 8;
+  string physical_filename = 9;
+  uint32 physical_file_sequence = 10;
+  uint32 chunk_sequence = 11;
+  uint64 chunk_offset = 12;
+  uint64 chunk_length = 13;
+  uint64 chunk_start_time_ns = 14;
+  uint64 chunk_duration_ns = 15;
+}
+
+message ChunkFrame {
+  string recording_id = 1;
+  string chunk_id = 2;
+  uint64 frame_offset = 3;
+  bytes payload = 4;
+}
+
+message CommitChunk {
+  string recording_id = 1;
+  string chunk_id = 2;
+  uint64 total_bytes = 3;
+  string checksum_algorithm = 4;
+  string checksum = 5;
+}
+
+message UploadAck {
+  string recording_id = 1;
+  string chunk_id = 2;
+  AckStatus status = 3;
+  string message = 4;
+  uint64 received_bytes = 5;
+}
+
+enum AckStatus {
+  ACK_STATUS_UNSPECIFIED = 0;
+  ACCEPTED = 1;
+  DUPLICATE = 2;
+  REJECTED = 3;
+  RETRY = 4;
+}

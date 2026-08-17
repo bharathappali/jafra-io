@@ -1,0 +1,21 @@
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: jafra-selfsigned
+  namespace: jafra-system
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: jafra-controller-serving-cert
+  namespace: jafra-system
+spec:
+  secretName: jafra-controller-serving-cert
+  dnsNames:
+    - jafra-controller.jafra-system.svc
+    - jafra-controller.jafra-system.svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: jafra-selfsigned

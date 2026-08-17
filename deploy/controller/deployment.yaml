@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jafra-controller
+  namespace: jafra-system
+  labels:
+    app.kubernetes.io/name: jafra-controller
+    app.kubernetes.io/version: "0.1.0"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: jafra-controller
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: jafra-controller
+        app.kubernetes.io/version: "0.1.0"
+    spec:
+      serviceAccountName: jafra-controller
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: controller
+          image: quay.io/bharathappali/jafra-controller:0.1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: webhook
+              containerPort: 9443
+            - name: metrics
+              containerPort: 8080
+            - name: health
+              containerPort: 8081
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: health
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - name: serving-cert
+              mountPath: /tmp/k8s-webhook-server/serving-certs
+              readOnly: true
+      volumes:
+        - name: serving-cert
+          secret:
+            secretName: jafra-controller-serving-cert
