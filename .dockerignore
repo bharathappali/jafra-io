@@ -1,0 +1,12 @@
+.git
+**/.git
+**/.gitignore
+async-profiler
+cryostat
+**/target
+jafra-agent/target
+jafra-analyzer/target
+jafra-controller/target
+**/*.md
+.cursor
+agent-transcripts
