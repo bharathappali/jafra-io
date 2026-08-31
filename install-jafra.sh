@@ -17,7 +17,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 KIND_CLUSTER="${KIND_CLUSTER:-jafra}"
-VERSION="${JAFRA_VERSION:-0.1.0}"
+VERSION="${JAFRA_VERSION:-0.0.1}"
 
 CONTROLLER_IMAGE="quay.io/bharathappali/jafra-controller:${VERSION}"
 AGENT_IMAGE="quay.io/bharathappali/jafra-agent:${VERSION}"
@@ -337,7 +337,7 @@ main() {
       echo ""
       echo "Environment:"
       echo "  KIND_CLUSTER    Kind cluster name (default: jafra)"
-      echo "  JAFRA_VERSION   Image tag (default: 0.1.0)"
+      echo "  JAFRA_VERSION   Image tag (default: 0.0.1)"
       exit 0
       ;;
     "")

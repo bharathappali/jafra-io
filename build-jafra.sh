@@ -14,14 +14,14 @@
 #   ./build-jafra.sh --no-cache --push
 #
 # Environment:
-#   JAFRA_VERSION    Image tag (default: 0.1.0)
+#   JAFRA_VERSION    Image tag (default: 0.0.1)
 #   JAFRA_REGISTRY   Image registry prefix (default: quay.io/bharathappali)
 #   JAFRA_PLATFORM   Default --platform (default: linux/amd64)
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VERSION="${JAFRA_VERSION:-0.1.0}"
+VERSION="${JAFRA_VERSION:-0.0.1}"
 REGISTRY="${JAFRA_REGISTRY:-quay.io/bharathappali}"
 PLATFORM="${JAFRA_PLATFORM:-linux/amd64}"
 MULTI_ARCH_PLATFORMS="linux/amd64,linux/arm64"
@@ -65,7 +65,7 @@ Options:
   --help, -h            Show this help
 
 Environment:
-  JAFRA_VERSION         Image tag (default: 0.1.0)
+  JAFRA_VERSION         Image tag (default: 0.0.1)
   JAFRA_REGISTRY        Registry prefix (default: quay.io/bharathappali)
   JAFRA_PLATFORM        Default --platform (default: linux/amd64)
 

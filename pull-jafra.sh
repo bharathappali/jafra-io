@@ -24,7 +24,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 KIND_CLUSTER="${KIND_CLUSTER:-jafra}"
-VERSION="${JAFRA_VERSION:-0.1.0}"
+VERSION="${JAFRA_VERSION:-0.0.1}"
 MCP_VERSION="${MCP_VERSION:-0.1.0}"
 MCP_MANIFEST="${SCRIPT_DIR}/Async-MCP/manifests/async-profiler-mcp-server-kind.yaml"
 CERT_MANAGER_MANIFEST="${CERT_MANAGER_MANIFEST:-https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml}"
@@ -437,7 +437,7 @@ usage() {
   echo ""
   echo "Environment:"
   echo "  KIND_CLUSTER    Kind cluster name (default: jafra)"
-  echo "  JAFRA_VERSION   Jafra image tag (default: 0.1.0)"
+  echo "  JAFRA_VERSION   Jafra image tag (default: 0.0.1)"
   echo "  MCP_VERSION     MCP image tag (default: 0.1.0)"
   echo "  MCP_IMAGE        Full MCP image override"
   echo ""

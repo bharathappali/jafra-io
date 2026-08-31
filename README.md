@@ -89,7 +89,7 @@ kind create cluster --name jafra
 | **Image source** | Podman build from Dockerfiles | `docker build` from source | `docker pull` from Quay |
 | **Deploys to Kind?** | No | Yes | Yes |
 | **Needs network to Quay for images?** | Only if `--push` or pulling bases | For base images during build | Yes (pull component images) |
-| **Default registry / tags** | `quay.io/bharathappali/jafra-*:0.1.0` | `quay.io/bharathappali/jafra-*:0.1.0` | `quay.io/causa-ai-hub/jafra-*:0.1.0` |
+| **Default registry / tags** | `quay.io/bharathappali/jafra-*:0.0.1` | `quay.io/bharathappali/jafra-*:0.0.1` | `quay.io/causa-ai-hub/jafra-*:0.0.1` |
 | **Multi-arch (amd64 + arm64)** | Yes (`--multi-platform`) | No (host/`docker build` only) | N/A (uses whatever was published) |
 | **MCP server** | No | No | Yes (`--mcp`) |
 | **cert-manager helper** | No | `--install-cert-manager` | `--install-cert-manager` (+ owned teardown) |
@@ -129,7 +129,7 @@ platform so Apple Silicon does not run `rustc` under qemu (which often SIGSEGVs)
 # Native arm64 (e.g. Kind on Apple Silicon)
 ./build-jafra.sh --platform linux/arm64
 
-# Both arches: :0.1.0-amd64, :0.1.0-arm64, and :0.1.0 as a manifest list
+# Both arches: :0.0.1-amd64, :0.0.1-arm64, and :0.0.1 as a manifest list
 ./build-jafra.sh --multi-platform
 
 # One component + push
@@ -176,9 +176,9 @@ and want Kind to run what you just built.
 | `--install-cert-manager` | Install cert-manager first (required for the webhook cert) |
 | `--teardown` | Remove Jafra resources from the cluster |
 
-**Env:** `KIND_CLUSTER` (default `jafra`), `JAFRA_VERSION` (default `0.1.0`).
+**Env:** `KIND_CLUSTER` (default `jafra`), `JAFRA_VERSION` (default `0.0.1`).
 
-Default image names: `quay.io/bharathappali/jafra-{controller,agent,analyzer}:0.1.0`.
+Default image names: `quay.io/bharathappali/jafra-{controller,agent,analyzer}:0.0.1`.
 
 Does **not** deploy the MCP server. For MCP, use `pull-jafra.sh --mcp` (or apply
 the Async-MCP Kind manifest yourself after the analyzer is up).
@@ -216,7 +216,7 @@ need MCP for LLM tools (`get_jfr_summary`, `get_recording_report`, …).
 
 **Env:** `KIND_CLUSTER`, `JAFRA_VERSION`, `MCP_VERSION` (default `0.1.0`), `MCP_IMAGE`.
 
-Default Jafra images: `quay.io/causa-ai-hub/jafra-*:0.1.0`.  
+Default Jafra images: `quay.io/causa-ai-hub/jafra-*:0.0.1`.  
 Default MCP image: `quay.io/khansaad/async-profiler-mcp-server:0.1.0`.
 
 **cert-manager ownership:** when `--install-cert-manager` actually installs
