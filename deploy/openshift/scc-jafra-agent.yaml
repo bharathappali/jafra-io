@@ -1,0 +1,66 @@
+# Minimal custom SCC for the jafra-agent DaemonSet (kubelet pod volume access).
+# The DaemonSet requests seLinuxOptions.type=spc_t to read MCS-isolated emptyDir
+# recordings under /var/lib/kubelet/pods (see deploy/agent/daemonset.yaml).
+#
+# OpenShift only auto-creates system:openshift:scc:* ClusterRoles for built-in
+# SCCs. Custom SCCs need the matching ClusterRole defined here.
+# Bind the jafra-agent ServiceAccount via deploy/openshift/scc-platform.yaml.
+#
+# Requires cluster-admin to apply.
+---
+apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: jafra-agent
+  labels:
+    app.kubernetes.io/part-of: jafra
+    app.kubernetes.io/component: agent
+allowHostDirVolumePlugin: true
+allowHostIPC: false
+allowHostNetwork: false
+allowHostPID: false
+allowHostPorts: false
+allowPrivilegeEscalation: false
+allowPrivilegedContainer: false
+allowedCapabilities: null
+defaultAddCapabilities: null
+fsGroup:
+  type: RunAsAny
+priority: 10
+readOnlyRootFilesystem: false
+requiredDropCapabilities:
+  - ALL
+runAsUser:
+  type: RunAsAny
+seLinuxContext:
+  type: RunAsAny
+seccompProfiles:
+  - runtime/default
+supplementalGroups:
+  type: RunAsAny
+users: []
+groups: []
+volumes:
+  - configMap
+  - downwardAPI
+  - emptyDir
+  - hostPath
+  - projected
+  - secret
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: system:openshift:scc:jafra-agent
+  labels:
+    app.kubernetes.io/part-of: jafra
+    app.kubernetes.io/component: agent
+rules:
+  - apiGroups:
+      - security.openshift.io
+    resources:
+      - securitycontextconstraints
+    resourceNames:
+      - jafra-agent
+    verbs:
+      - use

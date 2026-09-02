@@ -14,14 +14,14 @@
 #   ./build-jafra.sh --no-cache --push
 #
 # Environment:
-#   JAFRA_VERSION    Image tag (default: 0.0.1)
+#   JAFRA_VERSION    Image tag (default: 0.0.2)
 #   JAFRA_REGISTRY   Image registry prefix (default: quay.io/bharathappali)
 #   JAFRA_PLATFORM   Default --platform (default: linux/amd64)
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VERSION="${JAFRA_VERSION:-0.0.1}"
+VERSION="${JAFRA_VERSION:-0.0.2}"
 REGISTRY="${JAFRA_REGISTRY:-quay.io/bharathappali}"
 PLATFORM="${JAFRA_PLATFORM:-linux/amd64}"
 MULTI_ARCH_PLATFORMS="linux/amd64,linux/arm64"
@@ -65,7 +65,7 @@ Options:
   --help, -h            Show this help
 
 Environment:
-  JAFRA_VERSION         Image tag (default: 0.0.1)
+  JAFRA_VERSION         Image tag (default: 0.0.2)
   JAFRA_REGISTRY        Registry prefix (default: quay.io/bharathappali)
   JAFRA_PLATFORM        Default --platform (default: linux/amd64)
 
@@ -223,6 +223,15 @@ push_image() {
 
   step "Pushing ${image}"
   if [[ "${count}" -gt 1 ]]; then
+    # Local manifest lists can corrupt after arch pushes; rebuild from registry refs.
+    remove_local_ref "${image}"
+    podman manifest create "${image}"
+    for plat in ${PLATFORMS}; do
+      arch="$(platform_arch "${plat}")"
+      tagged="${image}-${arch}"
+      info "Adding ${tagged} to manifest ${image}"
+      podman manifest add "${image}" "docker://${tagged}"
+    done
     podman manifest push --all "${image}"
   else
     podman push "${image}"

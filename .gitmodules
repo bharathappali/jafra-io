@@ -1,9 +1,12 @@
 [submodule "jafra-controller"]
 	path = jafra-controller
 	url = https://github.com/bharathappali/jafra-controller.git
+	branch = dev
 [submodule "jafra-agent"]
 	path = jafra-agent
 	url = https://github.com/bharathappali/jafra-agent.git
+	branch = dev
 [submodule "jafra-analyzer"]
 	path = jafra-analyzer
 	url = https://github.com/bharathappali/jafra-analyzer.git
+	branch = dev

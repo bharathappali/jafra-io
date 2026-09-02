@@ -14,7 +14,7 @@ git submodules for the three runtime components.
 ```text
 opt-in Java Pod
     → jafra-controller injects async-profiler
-    → node-local JFR files under /var/lib/jafra/recordings
+    → emptyDir JFR files at /jfr-data (kubelet pod volume on the node)
     → jafra-agent streams finalized chunks
     → jafra-analyzer stores, stitches, and reports
     → (optional) async-profiler MCP server for LLM agents
@@ -79,19 +79,21 @@ kind create cluster --name jafra
 | Develop locally: change submodule code, build, deploy to Kind | [`install-jafra.sh`](#install-jafrash) |
 | Install from published Quay images (no local compile) | [`pull-jafra.sh`](#pull-jafrash) |
 | Also run the async-profiler MCP server for agents | [`pull-jafra.sh --mcp`](#pull-jafrash) |
+| Install on OpenShift (SCC + registry deploy) | [`install-jafra.sh --target openshift`](#install-jafrash) |
 | Tear down Kind Jafra (+ optional cert-manager / MCP) | `pull-jafra.sh --teardown` or `install-jafra.sh --teardown` |
 
 ### Comparison
 
 | | `build-jafra.sh` | `install-jafra.sh` | `pull-jafra.sh` |
 |---|---|---|---|
-| **Primary job** | Build container images | Build (if missing) + Kind deploy | Pull published images + Kind deploy |
-| **Image source** | Podman build from Dockerfiles | `docker build` from source | `docker pull` from Quay |
-| **Deploys to Kind?** | No | Yes | Yes |
+| **Primary job** | Build container images | Kind build/deploy or OpenShift deploy | Pull published images + Kind deploy |
+| **Image source** | Podman build from Dockerfiles | Kind: `docker build`; OCP: registry pull | `docker pull` from Quay |
+| **Deploy targets** | No | Kind (default) or OpenShift (`--target`) | Kind only |
 | **Needs network to Quay for images?** | Only if `--push` or pulling bases | For base images during build | Yes (pull component images) |
-| **Default registry / tags** | `quay.io/bharathappali/jafra-*:0.0.1` | `quay.io/bharathappali/jafra-*:0.0.1` | `quay.io/causa-ai-hub/jafra-*:0.0.1` |
+| **Default registry / tags** | `quay.io/bharathappali/jafra-*:0.0.2` | `quay.io/bharathappali/jafra-*:0.0.2` | `quay.io/causa-ai-hub/jafra-*:0.0.2` |
 | **Multi-arch (amd64 + arm64)** | Yes (`--multi-platform`) | No (host/`docker build` only) | N/A (uses whatever was published) |
 | **MCP server** | No | No | Yes (`--mcp`) |
+| **OpenShift SCC helper** | No | `--target openshift` | No |
 | **cert-manager helper** | No | `--install-cert-manager` | `--install-cert-manager` (+ owned teardown) |
 | **Force refresh** | `--no-cache` | `--force-build` | `--force-pull` |
 | **Skip image step** | N/A | `--deploy-only` | `--deploy-only` |
@@ -110,6 +112,9 @@ Publish multi-arch images
 
 Install on Kind from Quay (+ MCP)
     → ./pull-jafra.sh --install-cert-manager --mcp
+
+Install on OpenShift
+    → ./install-jafra.sh --target openshift --deploy-only
 ```
 
 ---
@@ -129,7 +134,7 @@ platform so Apple Silicon does not run `rustc` under qemu (which often SIGSEGVs)
 # Native arm64 (e.g. Kind on Apple Silicon)
 ./build-jafra.sh --platform linux/arm64
 
-# Both arches: :0.0.1-amd64, :0.0.1-arm64, and :0.0.1 as a manifest list
+# Both arches: :0.0.2-amd64, :0.0.2-arm64, and :0.0.2 as a manifest list
 ./build-jafra.sh --multi-platform
 
 # One component + push
@@ -153,32 +158,43 @@ the build context.
 
 ### `install-jafra.sh`
 
-Local **dev install**: if images are missing, build them with Docker from the
-submodule Dockerfiles, `kind load` them, then apply `deploy/` manifests and
-switch the agent to gRPC mode.
+Local **dev install** for Kind, or deploy to **OpenShift** from registry images.
+Kind: build if missing, `kind load`, apply `deploy/` manifests, switch agent to gRPC.
+OpenShift: apply minimal SCC bindings, deploy the same manifests (no `kind load`).
 
 **Use when:** you are editing `jafra-controller` / `jafra-agent` / `jafra-analyzer`
-and want Kind to run what you just built.
+and want Kind to run what you just built, or deploying Jafra on OpenShift.
 
 ```bash
+# Kind (default)
 ./install-jafra.sh
 ./install-jafra.sh --force-build
 ./install-jafra.sh --install-cert-manager
 ./install-jafra.sh --deploy-only
 ./install-jafra.sh --teardown
+
+# OpenShift
+./install-jafra.sh --target openshift --deploy-only
+./install-jafra.sh --target openshift --install-cert-manager
+./install-jafra.sh --target openshift --teardown
 ```
 
 | Option | Meaning |
 |---|---|
-| *(none)* | Build only if image missing, load, deploy |
-| `--force-build` | Rebuild all three images, then load + deploy |
-| `--deploy-only` | Apply manifests only (images already in Kind) |
+| `--target kind` | Build/load into Kind and deploy (default) |
+| `--target openshift` | OpenShift: SCC platform bindings + deploy from registry |
+| *(none)* | Kind: build only if image missing, load, deploy |
+| `--force-build` | Kind only: rebuild all three images, then load + deploy |
+| `--deploy-only` | Apply manifests only (skip image build/load) |
 | `--install-cert-manager` | Install cert-manager first (required for the webhook cert) |
-| `--teardown` | Remove Jafra resources from the cluster |
+| `--teardown` | Remove all Jafra resources from the cluster |
 
-**Env:** `KIND_CLUSTER` (default `jafra`), `JAFRA_VERSION` (default `0.0.1`).
+**Env:** `JAFRA_TARGET` (`kind` \| `openshift`), `KIND_CLUSTER` (default `jafra`),
+`JAFRA_VERSION` (default `0.0.2`).
 
-Default image names: `quay.io/bharathappali/jafra-{controller,agent,analyzer}:0.0.1`.
+Default image names: `quay.io/bharathappali/jafra-{controller,agent,analyzer}:0.0.2`.
+
+OpenShift permissions and SCC details: [deploy/openshift/README.md](deploy/openshift/README.md).
 
 Does **not** deploy the MCP server. For MCP, use `pull-jafra.sh --mcp` (or apply
 the Async-MCP Kind manifest yourself after the analyzer is up).
@@ -216,7 +232,7 @@ need MCP for LLM tools (`get_jfr_summary`, `get_recording_report`, …).
 
 **Env:** `KIND_CLUSTER`, `JAFRA_VERSION`, `MCP_VERSION` (default `0.1.0`), `MCP_IMAGE`.
 
-Default Jafra images: `quay.io/causa-ai-hub/jafra-*:0.0.1`.  
+Default Jafra images: `quay.io/causa-ai-hub/jafra-*:0.0.2`.  
 Default MCP image: `quay.io/khansaad/async-profiler-mcp-server:0.1.0`.
 
 **cert-manager ownership:** when `--install-cert-manager` actually installs

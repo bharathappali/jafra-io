@@ -1,0 +1,64 @@
+# OpenShift SCC bindings for Jafra platform components (namespace: jafra-system)
+#
+# Requires cluster-admin (or equivalent) to bind built-in SCC ClusterRoles.
+# The jafra-system namespace must exist first (RoleBindings are namespaced).
+# Prefer: ./install-jafra.sh --target openshift  (creates namespace, then applies this)
+# Manual order:
+#   kubectl apply -f deploy/controller/namespace.yaml
+#   kubectl apply -f deploy/openshift/scc-platform.yaml
+#
+# SCC rationale:
+#   jafra-agent      → jafra-agent (custom SCC: kubelet hostPath + spc_t SELinux)
+#   jafra-controller → nonroot           (fixed non-root image UID, no hostPath)
+#   jafra-analyzer   → nonroot           (PVC-backed storage, no hostPath)
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: jafra-agent-scc
+  namespace: jafra-system
+  labels:
+    app.kubernetes.io/part-of: jafra
+    app.kubernetes.io/component: agent
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:openshift:scc:jafra-agent
+subjects:
+  - kind: ServiceAccount
+    name: jafra-agent
+    namespace: jafra-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: jafra-controller-nonroot
+  namespace: jafra-system
+  labels:
+    app.kubernetes.io/part-of: jafra
+    app.kubernetes.io/component: controller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:openshift:scc:nonroot
+subjects:
+  - kind: ServiceAccount
+    name: jafra-controller
+    namespace: jafra-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: jafra-analyzer-nonroot
+  namespace: jafra-system
+  labels:
+    app.kubernetes.io/part-of: jafra
+    app.kubernetes.io/component: analyzer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:openshift:scc:nonroot
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: jafra-system
