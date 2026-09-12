@@ -9,3 +9,5 @@ instructions.md
 presentation/
 research/
 summary.json
+# Local sync of chaos-lab sample apps (do not commit)
+deploy/examples/perf-impact/

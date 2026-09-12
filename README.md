@@ -90,7 +90,7 @@ kind create cluster --name jafra
 | **Image source** | Podman build from Dockerfiles | Kind: `docker build`; OCP: registry pull | `docker pull` from Quay |
 | **Deploy targets** | No | Kind (default) or OpenShift (`--target`) | Kind only |
 | **Needs network to Quay for images?** | Only if `--push` or pulling bases | For base images during build | Yes (pull component images) |
-| **Default registry / tags** | `quay.io/bharathappali/jafra-*:0.0.2` | `quay.io/bharathappali/jafra-*:0.0.2` | `quay.io/causa-ai-hub/jafra-*:0.0.2` |
+| **Default registry / tags** | `quay.io/bharathappali/jafra-*:0.0.2` | `quay.io/bharathappali/jafra-*:0.0.2` | `${JAFRA_REGISTRY}/jafra-*:${JAFRA_VERSION}` (default `quay.io/causa-ai-hub` / `0.0.2`) |
 | **Multi-arch (amd64 + arm64)** | Yes (`--multi-platform`) | No (host/`docker build` only) | N/A (uses whatever was published) |
 | **MCP server** | No | No | Yes (`--mcp`) |
 | **OpenShift SCC helper** | No | `--target openshift` | No |
@@ -216,6 +216,7 @@ need MCP for LLM tools (`get_jfr_summary`, `get_recording_report`, …).
 ./pull-jafra.sh --force-pull
 ./pull-jafra.sh --install-cert-manager --mcp
 ./pull-jafra.sh --deploy-only --mcp
+JAFRA_REGISTRY=quay.io/bharathappali JAFRA_VERSION=v0.0.2-dev ./pull-jafra.sh --force-pull
 ./pull-jafra.sh --teardown
 ./pull-jafra.sh --teardown --uninstall-cert-manager
 ```
@@ -230,9 +231,11 @@ need MCP for LLM tools (`get_jfr_summary`, `get_recording_report`, …).
 | `--teardown` | Remove Jafra + MCP; remove cert-manager **only if** this script installed it |
 | `--uninstall-cert-manager` | With `--teardown`: force-remove cert-manager even if unmarked |
 
-**Env:** `KIND_CLUSTER`, `JAFRA_VERSION`, `MCP_VERSION` (default `0.1.0`), `MCP_IMAGE`.
+**Env:** `KIND_CLUSTER`, `JAFRA_REGISTRY` (default `quay.io/causa-ai-hub`),
+`JAFRA_VERSION` (default `0.0.2`), `MCP_VERSION` (default `0.1.0`), `MCP_IMAGE`.
 
-Default Jafra images: `quay.io/causa-ai-hub/jafra-*:0.0.2`.  
+Default Jafra images: `${JAFRA_REGISTRY}/jafra-*:${JAFRA_VERSION}`.  
+After apply, the script **pins** controller/agent/analyzer to those images (manifests still ship `:0.0.2`).  
 Default MCP image: `quay.io/khansaad/async-profiler-mcp-server:0.1.0`.
 
 **cert-manager ownership:** when `--install-cert-manager` actually installs

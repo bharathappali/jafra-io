@@ -14,10 +14,12 @@
 #   ./pull-jafra.sh --teardown              # delete Jafra (+ cert-manager if we installed it)
 #   ./pull-jafra.sh --teardown --uninstall-cert-manager  # also remove cert-manager
 #
+#   JAFRA_REGISTRY=quay.io/bharathappali JAFRA_VERSION=v0.0.2-dev ./pull-jafra.sh --force-pull
+#
 # Prerequisites:
 #   - kind cluster named "jafra" (or set KIND_CLUSTER)
 #   - docker, kubectl, kind
-#   - network access to quay.io (for pull)
+#   - network access to the registry (for pull)
 #   - cert-manager already installed, or pass --install-cert-manager
 
 set -euo pipefail
@@ -25,6 +27,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 KIND_CLUSTER="${KIND_CLUSTER:-jafra}"
 VERSION="${JAFRA_VERSION:-0.0.2}"
+JAFRA_REGISTRY="${JAFRA_REGISTRY:-quay.io/causa-ai-hub}"
 MCP_VERSION="${MCP_VERSION:-0.1.0}"
 MCP_MANIFEST="${SCRIPT_DIR}/Async-MCP/manifests/async-profiler-mcp-server-kind.yaml"
 CERT_MANAGER_MANIFEST="${CERT_MANAGER_MANIFEST:-https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml}"
@@ -32,9 +35,9 @@ CERT_MANAGER_MANIFEST="${CERT_MANAGER_MANIFEST:-https://github.com/cert-manager/
 CERT_MANAGER_OWNED_LABEL="jafra.io/installed-by"
 CERT_MANAGER_OWNED_VALUE="pull-jafra"
 
-CONTROLLER_IMAGE="quay.io/causa-ai-hub/jafra-controller:${VERSION}"
-AGENT_IMAGE="quay.io/causa-ai-hub/jafra-agent:${VERSION}"
-ANALYZER_IMAGE="quay.io/causa-ai-hub/jafra-analyzer:${VERSION}"
+CONTROLLER_IMAGE="${JAFRA_REGISTRY}/jafra-controller:${VERSION}"
+AGENT_IMAGE="${JAFRA_REGISTRY}/jafra-agent:${VERSION}"
+ANALYZER_IMAGE="${JAFRA_REGISTRY}/jafra-analyzer:${VERSION}"
 MCP_IMAGE="${MCP_IMAGE:-quay.io/khansaad/async-profiler-mcp-server:${MCP_VERSION}}"
 
 FORCE_PULL=false
@@ -220,6 +223,8 @@ ensure_images() {
   local force="${1:-false}"
 
   step "Pulling container images (force-pull=${force})"
+  info "Registry: ${JAFRA_REGISTRY}"
+  info "Version:  ${VERSION}"
 
   pull_image_if_needed "${CONTROLLER_IMAGE}" "$force"
   pull_image_if_needed "${AGENT_IMAGE}" "$force"
@@ -228,6 +233,19 @@ ensure_images() {
   if [[ "${WITH_MCP}" == "true" ]]; then
     pull_image_if_needed "${MCP_IMAGE}" "$force"
   fi
+}
+
+# Manifests hardcode quay.io/bharathappali/jafra-*:0.0.2 — pin to the images we pulled/loaded.
+pin_workload_image() {
+  local kind="$1"   # deployment | daemonset
+  local name="$2"
+  local container="$3"
+  local image="$4"
+
+  info "Pinning ${kind}/${name} container ${container} → ${image}"
+  kubectl set image "${kind}/${name}" -n jafra-system "${container}=${image}"
+  kubectl patch "${kind}/${name}" -n jafra-system --type=json \
+    -p="[{\"op\":\"replace\",\"path\":\"/spec/template/spec/containers/0/imagePullPolicy\",\"value\":\"IfNotPresent\"}]"
 }
 
 load_images() {
@@ -273,6 +291,7 @@ deploy_controller() {
 
   info "Deploying controller..."
   kubectl apply -f "${SCRIPT_DIR}/deploy/controller/deployment.yaml"
+  pin_workload_image deployment jafra-controller controller "${CONTROLLER_IMAGE}"
 
   info "Waiting for controller rollout..."
   kubectl rollout status deployment/jafra-controller \
@@ -288,6 +307,7 @@ deploy_analyzer() {
   step "Deploying jafra-analyzer"
 
   kubectl apply -f "${SCRIPT_DIR}/deploy/analyzer/deployment.yaml"
+  pin_workload_image deployment jafra-analyzer analyzer "${ANALYZER_IMAGE}"
 
   info "Waiting for analyzer rollout..."
   kubectl rollout status deployment/jafra-analyzer \
@@ -301,6 +321,7 @@ deploy_agent() {
 
   kubectl apply -f "${SCRIPT_DIR}/deploy/agent/rbac.yaml"
   kubectl apply -f "${SCRIPT_DIR}/deploy/agent/daemonset.yaml"
+  pin_workload_image daemonset jafra-agent agent "${AGENT_IMAGE}"
 
   info "Waiting for agent rollout..."
   kubectl rollout status daemonset/jafra-agent \
@@ -428,6 +449,7 @@ usage() {
   echo "Examples:"
   echo "  $0 --mcp"
   echo "  $0 --force-pull --mcp"
+  echo "  JAFRA_REGISTRY=quay.io/bharathappali JAFRA_VERSION=v0.0.2-dev $0 --force-pull"
   echo "  $0 --deploy-only --mcp"
   echo "  $0 --install-cert-manager --mcp"
   echo "  $0 --teardown"
@@ -437,6 +459,7 @@ usage() {
   echo ""
   echo "Environment:"
   echo "  KIND_CLUSTER    Kind cluster name (default: jafra)"
+  echo "  JAFRA_REGISTRY  Image registry prefix (default: quay.io/causa-ai-hub)"
   echo "  JAFRA_VERSION   Jafra image tag (default: 0.0.2)"
   echo "  MCP_VERSION     MCP image tag (default: 0.1.0)"
   echo "  MCP_IMAGE        Full MCP image override"
@@ -446,6 +469,8 @@ usage() {
   echo "  --teardown will uninstall cert-manager automatically."
   echo "  Pre-existing cert-manager is left alone unless you pass"
   echo "  --teardown --uninstall-cert-manager."
+  echo "  Deploy manifests hardcode :0.0.2; this script pins workloads to"
+  echo "  \${JAFRA_REGISTRY}/jafra-*:${VERSION} after apply."
   echo ""
   echo "Images:"
   echo "  ${CONTROLLER_IMAGE}"

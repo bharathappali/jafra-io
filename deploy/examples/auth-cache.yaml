@@ -33,7 +33,7 @@ spec:
     spec:
       containers:
         - name: auth-cache
-          image: quay.io/causa-ai-hub/quarkus-gc-pause:promotion-pressure-nd
+          image: quay.io/bharathappali/chaos-lab:quarkus-gc-pause
           imagePullPolicy: IfNotPresent
           env:
             - name: JAVA_TOOL_OPTIONS
