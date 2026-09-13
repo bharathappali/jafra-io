@@ -10,3 +10,7 @@
 	path = jafra-analyzer
 	url = https://github.com/bharathappali/jafra-analyzer.git
 	branch = dev
+[submodule "jafra-docs"]
+	path = jafra-docs
+	url = https://github.com/bharathappali/jafra-docs.git
+	branch = dev
