@@ -11,4 +11,7 @@ research/
 summary.json
 # Local sync of chaos-lab sample apps (do not commit)
 deploy/examples/perf-impact/
+# AI tools
 .cursor/
+.bob/
+.claude/
