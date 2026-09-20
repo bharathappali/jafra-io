@@ -5,7 +5,7 @@ metadata:
   namespace: jafra-system
   labels:
     app.kubernetes.io/name: jafra-controller
-    app.kubernetes.io/version: "0.0.1"
+    app.kubernetes.io/version: "0.0.2"
 spec:
   replicas: 1
   selector:
@@ -15,7 +15,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: jafra-controller
-        app.kubernetes.io/version: "0.0.1"
+        app.kubernetes.io/version: "0.0.2"
     spec:
       serviceAccountName: jafra-controller
       securityContext:
@@ -24,8 +24,8 @@ spec:
           type: RuntimeDefault
       containers:
         - name: controller
-          image: quay.io/bharathappali/jafra-controller:0.0.1
-          imagePullPolicy: IfNotPresent
+          image: quay.io/bharathappali/jafra-controller:0.0.2
+          imagePullPolicy: Always
           ports:
             - name: webhook
               containerPort: 9443

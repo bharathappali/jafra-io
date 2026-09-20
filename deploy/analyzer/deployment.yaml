@@ -17,7 +17,7 @@ metadata:
   namespace: jafra-system
   labels:
     app.kubernetes.io/name: jafra-analyzer
-    app.kubernetes.io/version: "0.0.1"
+    app.kubernetes.io/version: "0.0.2"
 spec:
   replicas: 1
   selector:
@@ -27,14 +27,14 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: jafra-analyzer
-        app.kubernetes.io/version: "0.0.1"
+        app.kubernetes.io/version: "0.0.2"
     spec:
       securityContext:
         fsGroup: 65532
       containers:
         - name: analyzer
-          image: quay.io/bharathappali/jafra-analyzer:0.0.1
-          imagePullPolicy: IfNotPresent
+          image: quay.io/bharathappali/jafra-analyzer:0.0.2
+          imagePullPolicy: Always
           env:
             - name: JAVA_TOOL_OPTIONS
               value: "-XX:+UseContainerSupport -Xms256m -Xmx1024m"

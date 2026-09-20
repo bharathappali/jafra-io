@@ -5,7 +5,7 @@ metadata:
   namespace: jafra-system
   labels:
     app.kubernetes.io/name: jafra-agent
-    app.kubernetes.io/version: "0.0.1"
+    app.kubernetes.io/version: "0.0.2"
 spec:
   selector:
     matchLabels:
@@ -14,10 +14,15 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: jafra-agent
-        app.kubernetes.io/version: "0.0.1"
+        app.kubernetes.io/version: "0.0.2"
     spec:
       serviceAccountName: jafra-agent
       hostNetwork: false
+      # OpenShift: spc_t lets the agent read other pods' kubelet emptyDir volumes
+      # (MCS-isolated container_file_t). Harmless on Kind/non-SELinux clusters.
+      securityContext:
+        seLinuxOptions:
+          type: spc_t
       nodeSelector:
         kubernetes.io/os: linux
       tolerations:
@@ -26,15 +31,17 @@ spec:
           effect: NoSchedule
       containers:
         - name: agent
-          image: quay.io/bharathappali/jafra-agent:0.0.1
-          imagePullPolicy: IfNotPresent
+          image: quay.io/bharathappali/jafra-agent:0.0.2
+          imagePullPolicy: Always
           env:
             - name: JAFRA_NODE_NAME
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
             - name: JAFRA_RECORDING_ROOT
-              value: /jfr-data
+              value: /var/lib/kubelet/pods
+            - name: JAFRA_RECORDING_VOLUME
+              value: jafra-recordings
             - name: JAFRA_MODE
               # log-only first. Switch to grpc after jafra-analyzer is Ready:
               # kubectl set env daemonset/jafra-agent -n jafra-system JAFRA_MODE=grpc
@@ -67,17 +74,18 @@ spec:
               cpu: 500m
               memory: 256Mi
           volumeMounts:
-            - name: recordings
-              mountPath: /jfr-data
+            - name: kubelet-pods
+              mountPath: /var/lib/kubelet/pods
               readOnly: false
           securityContext:
+            runAsUser: 0
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities:
               drop:
                 - ALL
       volumes:
-        - name: recordings
+        - name: kubelet-pods
           hostPath:
-            path: /var/lib/jafra/recordings
-            type: DirectoryOrCreate
+            path: /var/lib/kubelet/pods
+            type: Directory
