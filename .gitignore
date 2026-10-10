@@ -16,3 +16,4 @@ deploy/examples/perf-impact/
 .bob/
 .claude/
 jafra-io.code-workspace
+do_not_commit/
