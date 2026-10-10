@@ -1,9 +1,5 @@
 .idea/
 .DS_Store
-async-profiler/
-cryostat/
-cryostat-agent/
-Async-MCP/
 .cursor/
 instructions.md
 presentation/
