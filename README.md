@@ -16,7 +16,7 @@ opt-in Java Pod
     → jafra-controller injects async-profiler
     → emptyDir JFR files at /jfr-data (kubelet pod volume on the node)
     → jafra-agent streams finalized chunks
-    → jafra-analyzer stores, stitches, and reports
+    → jafra-analyzer stores chunks and reports
     → (optional) async-profiler MCP server for LLM agents
 ```
 
@@ -45,7 +45,7 @@ git clone https://github.com/khansaad/Async-MCP.git Async-MCP
 |---|---|
 | [jafra-controller](https://github.com/bharathappali/jafra-controller) | Mutating admission webhook. Opt-in Pods get async-profiler, a recording volume, and `JAVA_TOOL_OPTIONS`. See the [controller README](jafra-controller/README.md). |
 | [jafra-agent](https://github.com/bharathappali/jafra-agent) | Node-local collector (DaemonSet). Watches JFR files, streams finalized chunks to the analyzer, and deletes closed rotations after ack. See the [agent README](jafra-agent/README.md). |
-| [jafra-analyzer](https://github.com/bharathappali/jafra-analyzer) | Quarkus service. Accepts ingest over gRPC, persists and stitches recordings, and serves HTTP `/report` and `/summary`. See the [analyzer README](jafra-analyzer/README.md). |
+| [jafra-analyzer](https://github.com/bharathappali/jafra-analyzer) | Quarkus service. Accepts ingest over gRPC, persists chunk files, and serves HTTP `/report` and `/summary` by reading those chunks with JMC. See the [analyzer README](jafra-analyzer/README.md). |
 
 Each submodule is its own git repository. Commit and push there first, then
 update the SHA recorded in this parent.
