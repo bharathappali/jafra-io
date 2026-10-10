@@ -17,3 +17,4 @@ deploy/examples/perf-impact/
 .claude/
 jafra-io.code-workspace
 do_not_commit/
+data-clones/
