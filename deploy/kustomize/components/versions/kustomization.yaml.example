@@ -1,0 +1,13 @@
+# Copied to kustomization.yaml at install time by scripts/lib/kustomize-versions.sh
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+images:
+  - name: quay.io/bharathappali/jafra-controller
+    newName: quay.io/bharathappali/jafra-controller
+    newTag: "0.0.2"
+  - name: quay.io/bharathappali/jafra-agent
+    newName: quay.io/bharathappali/jafra-agent
+    newTag: "0.0.2"
+  - name: quay.io/bharathappali/jafra-analyzer
+    newName: quay.io/bharathappali/jafra-analyzer
+    newTag: "0.0.2"

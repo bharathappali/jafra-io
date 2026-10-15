@@ -54,8 +54,8 @@ update the SHA recorded in this parent.
 
 - `contracts/` — canonical `jafra.proto` shared by agent and analyzer. See
   [contracts/README.md](contracts/README.md).
-- `deploy/` — Kubernetes manifests for the controller, agent, analyzer, and
-  example workloads (`namespace.yaml` first).
+- `deploy/` — Kubernetes manifests (`deploy/kustomize/` for workloads;
+  `deploy/controller/webhook.yaml` is cluster-scoped) and example workloads.
 - `build-jafra.sh` — build component images with Podman.
 - `install-jafra.sh` — build (if needed) from source, load into Kind, deploy.
 - `pull-jafra.sh` — pull published images, load into Kind, deploy (optional MCP).
@@ -90,7 +90,7 @@ kind create cluster --name jafra
 | **Image source** | Podman build from Dockerfiles | Kind: `docker build`; OCP: registry pull | `docker pull` from Quay |
 | **Deploy targets** | No | Kind (default) or OpenShift (`--target`) | Kind only |
 | **Needs network to Quay for images?** | Only if `--push` or pulling bases | For base images during build | Yes (pull component images) |
-| **Default registry / tags** | `quay.io/bharathappali/jafra-*:0.0.2` | `quay.io/bharathappali/jafra-*:0.0.2` | `${JAFRA_REGISTRY}/jafra-*:${JAFRA_VERSION}` (default `quay.io/causa-ai-hub` / `0.0.2`) |
+| **Default registry / tags** | `quay.io/bharathappali/jafra-*:0.0.2` | `quay.io/bharathappali/jafra-*:0.0.2` | Same as install (`JAFRA_REGISTRY` / `JAFRA_VERSION`) |
 | **Multi-arch (amd64 + arm64)** | Yes (`--multi-platform`) | No (host/`docker build` only) | N/A (uses whatever was published) |
 | **MCP server** | No | No | Yes (`--mcp`) |
 | **OpenShift SCC helper** | No | `--target openshift` | No |
@@ -159,7 +159,8 @@ the build context.
 ### `install-jafra.sh`
 
 Local **dev install** for Kind, or deploy to **OpenShift** from registry images.
-Kind: build if missing, `kind load`, apply `deploy/` manifests, switch agent to gRPC.
+Kind: build if missing, `kind load`, `kubectl apply -k` phased Kustomize overlays,
+switch agent to gRPC.
 OpenShift: apply minimal SCC bindings, deploy the same manifests (no `kind load`).
 
 **Use when:** you are editing `jafra-controller` / `jafra-agent` / `jafra-analyzer`
@@ -190,9 +191,17 @@ and want Kind to run what you just built, or deploying Jafra on OpenShift.
 | `--teardown` | Remove all Jafra resources from the cluster |
 
 **Env:** `JAFRA_TARGET` (`kind` \| `openshift`), `KIND_CLUSTER` (default `jafra`),
-`JAFRA_VERSION` (default `0.0.2`).
+`JAFRA_REGISTRY` (default `quay.io/bharathappali`), `JAFRA_VERSION` (default `0.0.2`).
 
-Default image names: `quay.io/bharathappali/jafra-{controller,agent,analyzer}:0.0.2`.
+Override tags before install, for example:
+
+```bash
+export JAFRA_VERSION=0.0.3-dev
+./install-jafra.sh --target kind --force-build
+```
+
+Requires `kubectl` with Kustomize (`kubectl apply -k`). Image tags are rendered into
+`deploy/kustomize/components/versions/` at deploy time (gitignored).
 
 OpenShift permissions and SCC details: [deploy/openshift/README.md](deploy/openshift/README.md).
 
@@ -216,7 +225,7 @@ need MCP for LLM tools (`get_jfr_summary`, `get_recording_report`, …).
 ./pull-jafra.sh --force-pull
 ./pull-jafra.sh --install-cert-manager --mcp
 ./pull-jafra.sh --deploy-only --mcp
-JAFRA_REGISTRY=quay.io/bharathappali JAFRA_VERSION=v0.0.2-dev ./pull-jafra.sh --force-pull
+JAFRA_REGISTRY=quay.io/bharathappali JAFRA_VERSION=0.0.3-dev ./pull-jafra.sh --force-pull
 ./pull-jafra.sh --teardown
 ./pull-jafra.sh --teardown --uninstall-cert-manager
 ```
@@ -231,11 +240,10 @@ JAFRA_REGISTRY=quay.io/bharathappali JAFRA_VERSION=v0.0.2-dev ./pull-jafra.sh --
 | `--teardown` | Remove Jafra + MCP; remove cert-manager **only if** this script installed it |
 | `--uninstall-cert-manager` | With `--teardown`: force-remove cert-manager even if unmarked |
 
-**Env:** `KIND_CLUSTER`, `JAFRA_REGISTRY` (default `quay.io/causa-ai-hub`),
+**Env:** `KIND_CLUSTER`, `JAFRA_REGISTRY` (default `quay.io/bharathappali`),
 `JAFRA_VERSION` (default `0.0.2`), `MCP_VERSION` (default `0.1.0`), `MCP_IMAGE`.
 
-Default Jafra images: `${JAFRA_REGISTRY}/jafra-*:${JAFRA_VERSION}`.  
-After apply, the script **pins** controller/agent/analyzer to those images (manifests still ship `:0.0.2`).  
+Uses the same Kustomize deploy path as `install-jafra.sh` (no post-apply `kubectl set image`).
 Default MCP image: `quay.io/khansaad/async-profiler-mcp-server:0.1.0`.
 
 **cert-manager ownership:** when `--install-cert-manager` actually installs

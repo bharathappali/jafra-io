@@ -14,3 +14,4 @@ deploy/examples/perf-impact/
 jafra-io.code-workspace
 do_not_commit/
 data-clones/
+deploy/kustomize/components/versions/kustomization.yaml

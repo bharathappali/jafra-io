@@ -1,12 +1,16 @@
 # shellcheck shell=bash
 
+# shellcheck source=scripts/lib/kustomize-versions.sh
+source "${SCRIPT_DIR}/scripts/lib/kustomize-versions.sh"
+
 ensure_platform_namespace() {
+  write_versions_component
   if kubectl_cmd get namespace "${JAFRA_NAMESPACE}" &>/dev/null; then
     info "Namespace ${JAFRA_NAMESPACE} already exists"
   else
     info "Creating namespace ${JAFRA_NAMESPACE}..."
   fi
-  kubectl_cmd apply -f "${SCRIPT_DIR}/deploy/controller/namespace.yaml"
+  kustomize_apply_phase bootstrap
 }
 
 deploy_controller() {
@@ -15,12 +19,6 @@ deploy_controller() {
   require_cert_manager
 
   ensure_platform_namespace
-
-  info "Applying RBAC..."
-  kubectl_cmd apply -f "${SCRIPT_DIR}/deploy/controller/rbac.yaml"
-
-  info "Creating TLS certificate (requires cert-manager)..."
-  kubectl_cmd apply -f "${SCRIPT_DIR}/deploy/controller/certificate.yaml"
 
   info "Waiting for certificate to be ready..."
   if ! kubectl_cmd wait --for=condition=Ready \
@@ -31,11 +29,8 @@ deploy_controller() {
     exit 1
   fi
 
-  info "Deploying service..."
-  kubectl_cmd apply -f "${SCRIPT_DIR}/deploy/controller/service.yaml"
-
-  info "Deploying controller..."
-  kubectl_cmd apply -f "${SCRIPT_DIR}/deploy/controller/deployment.yaml"
+  info "Deploying controller service and deployment..."
+  kustomize_apply_phase controller
 
   info "Waiting for controller rollout..."
   kubectl_cmd rollout status deployment/jafra-controller \
@@ -46,7 +41,7 @@ deploy_controller() {
   fi
 
   info "Registering webhook..."
-  kubectl_cmd apply -f "${SCRIPT_DIR}/deploy/controller/webhook.yaml"
+  kubectl_cmd apply -f "${KUSTOMIZE_WEBHOOK}"
 
   info "Controller ready"
 }
@@ -54,7 +49,7 @@ deploy_controller() {
 deploy_analyzer() {
   step "Deploying jafra-analyzer"
 
-  kubectl_cmd apply -f "${SCRIPT_DIR}/deploy/analyzer/deployment.yaml"
+  kustomize_apply_phase analyzer
 
   info "Waiting for analyzer rollout..."
   kubectl_cmd rollout status deployment/jafra-analyzer \
@@ -66,8 +61,7 @@ deploy_analyzer() {
 deploy_agent() {
   step "Deploying jafra-agent"
 
-  kubectl_cmd apply -f "${SCRIPT_DIR}/deploy/agent/rbac.yaml"
-  kubectl_cmd apply -f "${SCRIPT_DIR}/deploy/agent/daemonset.yaml"
+  kustomize_apply_phase agent
 
   info "Waiting for agent rollout..."
   kubectl_cmd rollout status daemonset/jafra-agent \
@@ -91,6 +85,7 @@ switch_agent_to_grpc() {
 }
 
 deploy_all() {
+  write_versions_component
   deploy_controller
   deploy_analyzer
   deploy_agent
@@ -100,21 +95,22 @@ deploy_all() {
 teardown_jafra() {
   step "Tearing down Jafra ecosystem"
 
+  write_versions_component
+
   warn "Deleting webhook..."
-  kubectl_cmd delete -f "${SCRIPT_DIR}/deploy/controller/webhook.yaml" --ignore-not-found 2>/dev/null || true
+  kubectl_cmd delete -f "${KUSTOMIZE_WEBHOOK}" --ignore-not-found 2>/dev/null || true
 
   warn "Deleting agent..."
-  kubectl_cmd delete -f "${SCRIPT_DIR}/deploy/agent/daemonset.yaml" --ignore-not-found 2>/dev/null || true
-  kubectl_cmd delete -f "${SCRIPT_DIR}/deploy/agent/rbac.yaml" --ignore-not-found 2>/dev/null || true
+  kustomize_delete_phase agent
 
   warn "Deleting analyzer..."
-  kubectl_cmd delete -f "${SCRIPT_DIR}/deploy/analyzer/deployment.yaml" --ignore-not-found 2>/dev/null || true
+  kustomize_delete_phase analyzer
 
   warn "Deleting controller..."
-  kubectl_cmd delete -f "${SCRIPT_DIR}/deploy/controller/deployment.yaml" --ignore-not-found 2>/dev/null || true
-  kubectl_cmd delete -f "${SCRIPT_DIR}/deploy/controller/service.yaml" --ignore-not-found 2>/dev/null || true
-  kubectl_cmd delete -f "${SCRIPT_DIR}/deploy/controller/certificate.yaml" --ignore-not-found 2>/dev/null || true
-  kubectl_cmd delete -f "${SCRIPT_DIR}/deploy/controller/rbac.yaml" --ignore-not-found 2>/dev/null || true
+  kustomize_delete_phase controller
+
+  warn "Deleting platform bootstrap (RBAC, certificate, namespace)..."
+  kustomize_delete_phase bootstrap
 
   if [[ "${JAFRA_TARGET}" == "openshift" ]]; then
     warn "Deleting custom jafra-agent SCC binding..."
@@ -126,7 +122,7 @@ teardown_jafra() {
     fi
   fi
 
-  warn "Deleting namespace..."
+  warn "Deleting namespace if still present..."
   kubectl_cmd delete namespace "${JAFRA_NAMESPACE}" --ignore-not-found 2>/dev/null || true
 
   info "Teardown complete"
@@ -134,6 +130,10 @@ teardown_jafra() {
 
 verify_jafra() {
   step "Verifying Jafra installation"
+  echo ""
+
+  resolve_component_versions
+  info "Images: controller=${CONTROLLER_IMAGE} agent=${AGENT_IMAGE} analyzer=${ANALYZER_IMAGE}"
   echo ""
 
   info "Namespace:"

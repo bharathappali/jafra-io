@@ -65,7 +65,7 @@ apply_platform_scc_bindings() {
   if ! can_bind_scc_clusterrole "system:openshift:scc:jafra-agent"; then
     error "Cannot bind OpenShift SCC ClusterRoles in namespace ${JAFRA_NAMESPACE}."
     error "Ask a cluster admin to apply after the namespace exists:"
-    error "  kubectl apply -f ${SCRIPT_DIR}/deploy/controller/namespace.yaml"
+      error "  kubectl apply -k ${SCRIPT_DIR}/deploy/kustomize/phases/bootstrap"
     error "  kubectl apply -f ${SCRIPT_DIR}/deploy/openshift/scc-platform.yaml"
     error "Or run: $0 --target openshift --deploy-only"
     exit 1

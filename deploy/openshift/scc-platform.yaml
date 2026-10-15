@@ -4,7 +4,7 @@
 # The jafra-system namespace must exist first (RoleBindings are namespaced).
 # Prefer: ./install-jafra.sh --target openshift  (creates namespace, then applies this)
 # Manual order:
-#   kubectl apply -f deploy/controller/namespace.yaml
+#   kubectl apply -k deploy/kustomize/phases/bootstrap
 #   kubectl apply -f deploy/openshift/scc-platform.yaml
 #
 # SCC rationale:

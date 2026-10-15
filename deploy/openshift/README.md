@@ -21,7 +21,7 @@ and deploy the same manifests as Kind.
 Cluster admin can pre-apply (namespace **must** exist before SCC bindings):
 
 ```bash
-kubectl apply -f deploy/controller/namespace.yaml
+kubectl apply -k deploy/kustomize/phases/bootstrap
 kubectl apply -f deploy/openshift/scc-jafra-agent.yaml   # SCC + ClusterRole (custom SCCs need both)
 kubectl apply -f deploy/openshift/scc-platform.yaml
 # cert-manager if not already present
@@ -85,9 +85,9 @@ Teardown:
 
 ## Images
 
-OpenShift pulls directly from the registry configured in manifests
-(`quay.io/bharathappali/jafra-*`). No `kind load` step. Ensure nodes can pull
-the images or configure `imagePullSecrets` on the ServiceAccounts.
+OpenShift pulls from `${JAFRA_REGISTRY}/jafra-*:${JAFRA_VERSION}` (set env before
+`./install-jafra.sh --target openshift`). No `kind load` step. Ensure nodes can
+pull the images or configure `imagePullSecrets` on the ServiceAccounts.
 
 ## Troubleshooting
 
